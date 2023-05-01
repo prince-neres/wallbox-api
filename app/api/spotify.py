@@ -7,7 +7,7 @@ from app import Config
 
 
 @api.route('/tier_phonks', methods=['GET'])
-@cross_origin(origins='http://localhost:5173')
+@cross_origin(origins=Config.CLIENT_URL)
 def get_top_10_phonks():
     # Autenticar e obter uma chave de acesso da API do Spotify
     client_credentials_manager = SpotifyClientCredentials(

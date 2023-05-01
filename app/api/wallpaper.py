@@ -4,12 +4,12 @@ from flask_cors import cross_origin
 from io import BytesIO
 from PIL import Image
 from . import api
-from app import db
+from app import db, Config
 from app.models import Wallpaper
 
 
 @api.route('/wallpapers')
-@cross_origin(origins='http://localhost:5173')
+@cross_origin(origins=Config.CLIENT_URL)
 def get_wallpapers():
     wallpapers = Wallpaper.query.all()
     wallpapers_list = []
@@ -25,7 +25,7 @@ def get_wallpapers():
 
 
 @api.route('/wallpaper/<int:id>')
-@cross_origin(origins='http://localhost:5173')
+@cross_origin(origins=Config.CLIENT_URL)
 def get_wallpaper(id):
     wallpaper = Wallpaper.query.filter_by(id=id).first()
     # Convertendo a imagem de bytea para um objeto de imagem
@@ -41,7 +41,7 @@ def get_wallpaper(id):
 
 
 @api.route('/upload_image', methods=['POST'])
-@cross_origin(origins='http://localhost:5173')
+@cross_origin(origins=Config.CLIENT_URL)
 def upload_image():
     form_data = request.form
     image = request.files['image']
