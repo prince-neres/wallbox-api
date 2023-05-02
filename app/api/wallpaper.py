@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from os import getenv
 from . import api
 from app import db, Config, s3
-from app.models import Wallpaper
+from app.models import Wallpaper, User
 import uuid
 
 
@@ -73,19 +73,33 @@ def upload_image():
 
 @api.route('/wallpapers', methods=['GET'])
 @cross_origin(origins=Config.CLIENT_URL)
-def get_wallapers():
-    wallpapers = Wallpaper.query.all()
-    wallpapers_list = []
-    for wallpaper in wallpapers:
+def get_wallpapers():
+    # Utiliza join para obter os dados do usuário associado a cada imagem
+    wallpapers = db.session.query(Wallpaper, User).join(
+        User, Wallpaper.user_id == User.id).all()
 
-        wallpapers_list.append({
+    wallpapers_list = []
+    for wallpaper, user in wallpapers:
+        user_json = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'date_created': user.date_created,
+            'date_updated': user.date_updated
+        }
+
+        wallpaper_json = {
             'id': wallpaper.id,
-            'user_id': wallpaper.user_id,
+            'user': user_json,
             'title': wallpaper.title,
             'description': wallpaper.description,
+            'tags': wallpaper.tags,
             'filename': wallpaper.filename,
             'image':  wallpaper.image,
             'date_created': wallpaper.date_created,
             'date_updated': wallpaper.date_updated,
-        })
+        }
+
+        wallpapers_list.append(wallpaper_json)
+
     return make_response(jsonify(wallpapers_list), 200)
