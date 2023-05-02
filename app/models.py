@@ -19,6 +19,6 @@ class Wallpaper(db.Model):
     filename = db.Column(db.String(500), nullable=False, default='')
     tags = db.Column(ARRAY(db.String(50)), nullable=False, default=[])
     description = db.Column(db.String(500), nullable=False)
-    image = db.Column(db.LargeBinary, nullable=False, default=b'')
+    image = db.Column(db.String(500), nullable=False, default='')
     date_created = db.Column(db.DateTime, default=datetime.utcnow())
     date_updated = db.Column(db.DateTime, default=datetime.utcnow())
