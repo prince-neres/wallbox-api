@@ -17,10 +17,17 @@ def upload_image():
     form_data = request.form
     file = request.files['image']
     title = form_data.get('title')
-    tags = form_data.get('tags').split('/')
+    tags = eval(form_data.get('tags'))
     description = form_data.get('description')
     uuid_code = str(uuid.uuid4())
     filename = f'{uuid_code}-{file.filename.strip()}'
+
+    if not title or not file or not description or not tags:
+        error_data = {
+            'message': 'O campo título, descrição, tags e a anexação da imagem precisam ser preenchidos',
+            'code': 'INVALID_FILE_EXTENSION'
+        }
+        return make_response(jsonify(error_data), 400)
 
     # Verifica tamanho do arquivo
     max_image_size = 10 * 1024 * 1024  # 10 MB
@@ -79,6 +86,7 @@ def get_wallpapers():
         User, Wallpaper.user_id == User.id).all()
 
     wallpapers_list = []
+
     for wallpaper, user in wallpapers:
         user_json = {
             'id': user.id,
@@ -103,3 +111,30 @@ def get_wallpapers():
         wallpapers_list.append(wallpaper_json)
 
     return make_response(jsonify(wallpapers_list), 200)
+
+
+@api.route('/user-wallpapers', methods=['GET'])
+@cross_origin(origins=Config.CLIENT_URL)
+@jwt_required()
+def get_user_wallpapers():
+    user = get_jwt_identity()
+    user_wallpapers = Wallpaper.query.filter_by(user_id=user.get("id"))
+
+    user_wallpapers_list = []
+
+    for wallpaper in user_wallpapers:
+
+        wallpaper_json = {
+            'id': wallpaper.id,
+            'title': wallpaper.title,
+            'description': wallpaper.description,
+            'tags': wallpaper.tags,
+            'filename': wallpaper.filename,
+            'image':  wallpaper.image,
+            'date_created': wallpaper.date_created,
+            'date_updated': wallpaper.date_updated,
+        }
+
+        user_wallpapers_list.append(wallpaper_json)
+
+    return make_response(jsonify(user_wallpapers_list), 200)
