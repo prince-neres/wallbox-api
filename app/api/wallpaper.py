@@ -1,10 +1,10 @@
+from operator import or_
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from os import getenv
 from datetime import datetime
 from . import api
-from ..validations import detect_nsfw_image, validate_image
+from ..validations import validate_image
 from app import db, Config, s3
 from app.models import Wallpaper, User
 from app.schemas import WallpaperSchema, UserSchema
@@ -40,7 +40,33 @@ def get_wallpapers():
 
         # Inclui o JSON do usuário dentro do JSON do wallpaper
         wallpaper_json['user'] = user_json
+        wallpapers_list.append(wallpaper_json)
 
+    return make_response(jsonify(wallpapers_list), 200)
+
+
+@api.route('/search', methods=['GET'])
+@cross_origin(origins=Config.CLIENT_URL)
+def search_wallpapers():
+    query = request.args.get('query')
+
+    wallpapers = db.session.query(Wallpaper, User).join(
+        User, Wallpaper.user_id == User.id).filter(
+        or_(Wallpaper.title.ilike(f'%{query}%'),
+            Wallpaper.description.ilike(f'%{query}%'))
+    ).all()
+
+    wallpapers_list = []
+
+    for wallpaper, user in wallpapers:
+        user_schema = UserSchema()
+        user_json = user_schema.dump(user)
+
+        wallpaper_schema = WallpaperSchema()
+        wallpaper_json = wallpaper_schema.dump(wallpaper)
+
+        # Inclui o JSON do usuário dentro do JSON do wallpaper
+        wallpaper_json['user'] = user_json
         wallpapers_list.append(wallpaper_json)
 
     return make_response(jsonify(wallpapers_list), 200)
@@ -70,16 +96,6 @@ def upload_image():
     uuid_code = str(uuid.uuid4())
     filename = f'{uuid_code}-{file.filename.strip()}'
 
-    # Valida se há conteúdo NSFW na imagem
-    result_detected_image = detect_nsfw_image(file)
-    is_safe = validate_image(result_detected_image)
-    if not is_safe:
-        error_data = {
-            'message': 'Conteúdo inadequado detectado na imagem',
-            'code': 'NSFW_DETECTED'
-        }
-        return make_response(jsonify(error_data), 400)
-
     # Valida se campos foram preenchidos
     if not title or not file or not description or not tags:
         error_data = {
@@ -88,29 +104,11 @@ def upload_image():
         }
         return make_response(jsonify(error_data), 400)
 
-    # Verifica tamanho do arquivo
-    max_image_size = 10 * 1024 * 1024  # 10 MB
-    if len(file.read()) > max_image_size:
-        error_data = {
-            'message': 'Tamanho da imagem excedido',
-            'code': 'INVALID_SIZE_IMAGE'
-        }
-        return make_response(jsonify(error_data), 400)
-    file.seek(0)
-
-    # Verifica a extensão do arquivo
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-    if not '.' in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
-        error_data = {
-            'message': 'O arquivo precisa ter uma extensão válida (png, jpg, jpeg ou gif)',
-            'code': 'INVALID_FILE_EXTENSION'
-        }
-        return make_response(jsonify(error_data), 400)
-
     try:
         # Faz o upload do arquivo para o S3
-        s3.upload_fileobj(file, getenv('AWS_BUCKET_NAME'), filename)
-        url = f"{getenv('AWS_SS3_CUSTOM_DOMAIN')}/{filename}"
+        validate_image(file)
+        s3.upload_fileobj(file, Config.AWS_BUCKET_NAME, filename)
+        url = f"{Config.AWS_SS3_CUSTOM_DOMAIN}/{filename}"
 
         # Adicionar imagem no banco
         new_wallpaper = Wallpaper(

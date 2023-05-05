@@ -1,24 +1,30 @@
 import requests
 import json
-from os import getenv
+from flask import jsonify, make_response
+from app import Config
 
 
-def detect_nsfw_image(image):
+def request_to_detect_nsfw_image(image):
     params = {
         'models': 'nudity-2.0,offensive,face-attributes,gore,tobacco',
-        'api_user': getenv('SIGHTENGINE_API_USER'),
-        'api_secret': getenv('SIGHTENGINE_API_SECRET')
+        'api_user': Config.SIGHTENGINE_API_USER,
+        'api_secret': Config.SIGHTENGINE_API_SECRET
     }
     files = {'media': image}
     r = requests.post(
-        getenv('SIGHTENGINE_API'), files=files, data=params)
+        Config.SIGHTENGINE_API, files=files, data=params)
 
     output = json.loads(r.text)
 
     return output
 
 
-def validate_image(output, gore_threshold=0.1, nudity_threshold=0.1, offensive_threshold=0.1, tobacco_threshold=0.1):
+def validate_nsfw_in_image(output,
+                           gore_threshold=0.1,
+                           nudity_threshold=0.1,
+                           offensive_threshold=0.1,
+                           tobacco_threshold=0.1
+                           ):
     """
     Valida um JSON de detecção de imagem para verificar se a imagem contém conteúdo impróprio.
 
@@ -50,3 +56,34 @@ def validate_image(output, gore_threshold=0.1, nudity_threshold=0.1, offensive_t
         return False
 
     return True
+
+
+def validate_image(file):
+    # Valida se há conteúdo NSFW na imagem
+    result_detected_image = request_to_detect_nsfw_image(file)
+    is_safe = validate_nsfw_in_image(result_detected_image)
+    if not is_safe:
+        error_data = {
+            'message': 'Conteúdo inadequado detectado na imagem',
+            'code': 'NSFW_DETECTED'
+        }
+        return make_response(jsonify(error_data), 400)
+
+    # Verifica tamanho do arquivo
+    max_image_size = 10 * 1024 * 1024  # 10 MB
+    if len(file.read()) > max_image_size:
+        error_data = {
+            'message': 'Tamanho da imagem excedido',
+            'code': 'INVALID_SIZE_IMAGE'
+        }
+        return make_response(jsonify(error_data), 400)
+    file.seek(0)
+
+    # Verifica a extensão do arquivo
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+    if not '.' in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
+        error_data = {
+            'message': 'O arquivo precisa ter uma extensão válida (png, jpg, jpeg ou gif)',
+            'code': 'INVALID_FILE_EXTENSION'
+        }
+        return make_response(jsonify(error_data), 400)
