@@ -5,7 +5,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import json
 from . import api
 from app import db, Config
+from app.schemas import UserSchema
 from app.models import User
+import datetime
 
 
 @api.route("/protected", methods=["GET"])
@@ -55,15 +57,13 @@ def register():
                         password=generate_password_hash(password))
         db.session.add(new_user)
         db.session.commit()
-        data = {
-            'id': new_user.id,
-            'username': new_user.username,
-            'email': new_user.email,
-            'date_created': new_user.date_created,
-            'date_updated': new_user.date_updated
-        }
-        data.update({"token": create_access_token(data)})
-        return make_response(jsonify(data), 201)
+
+        user_schema = UserSchema()
+        user_json = user_schema.dump(new_user)
+
+        expires = datetime.timedelta(days=7)
+        user_json.update({"token": create_access_token(user_json, expires)})
+        return make_response(jsonify(user_json), 201)
     except:
         # Erro genérico
         error_data = {
@@ -98,19 +98,16 @@ def login():
             # Senha incorreta
             return make_response(jsonify({'message': 'Senha incorreta', 'code': 'INVALID_PASSWORD'}), 401)
 
-        data = {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'date_created': user.date_created,
-            'date_updated': user.date_updated
-        }
+        user_schema = UserSchema()
+        user_json = user_schema.dump(user)
 
-        data.update({"token": create_access_token(data)})
+        expires = datetime.timedelta(days=7)
+        user_json.update({"token": create_access_token(user_json, expires)})
 
-        return make_response(jsonify(data), 200)
+        return make_response(jsonify(user_json), 200)
 
     except:
         # Erro genérico
-        data = {'message': 'Erro ao tentar efetuar login', 'code': 'ERROR'}
-        return make_response(jsonify(data), 400)
+        error_data = {
+            'message': 'Erro ao tentar efetuar login', 'code': 'ERROR'}
+        return make_response(jsonify(error_data), 400)
