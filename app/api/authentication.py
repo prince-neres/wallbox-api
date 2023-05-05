@@ -4,18 +4,67 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 from . import api
-from app import db, Config
+from ..validations import validate_image
+from app import db, Config, s3
 from app.schemas import UserSchema
 from app.models import User
 import datetime
+import uuid
 
 
-@api.route("/protected", methods=["GET"])
+@api.route("/user/<int:id>", methods=["PUT"])
 @jwt_required()
 @cross_origin(origins=Config.CLIENT_URL)
-def protected():
+def update_user(id):
     current_user = get_jwt_identity()
-    return make_response(jsonify(logged_in_as=current_user), 200)
+    form_data = request.form
+    file = request.files.get('image')
+    username = form_data.get('username')
+
+    if current_user.get('id') != id:
+        error_data = {
+            'message': 'Sem permissão',
+            'code': 'NOT_PERMISSION'
+        }
+        return make_response(jsonify(error_data), 400)
+
+    if not username:
+        error_data = {
+            'message': 'O campo usuário precisa ser preenchido',
+            'code': 'INVALID_DATA'
+        }
+        return make_response(jsonify(error_data), 400)
+
+    try:
+        user = User.query.filter_by(id=id).first()
+        user.username = username
+
+        if file:
+            # Faz o upload do arquivo para o S3
+            validate_image(file)
+            uuid_code = str(uuid.uuid4())
+            filename = f'{uuid_code}-{file.filename.strip()}'
+            s3.upload_fileobj(file, Config.AWS_BUCKET_NAME, filename)
+            url = f"{Config.AWS_SS3_CUSTOM_DOMAIN}/{filename}"
+            user.image = url
+
+        # Atualiza usuário no banco
+        db.session.commit()
+
+        # Cria os objetos de schema e faz o dump dos dados
+        user_schema = UserSchema()
+        user_data = user_schema.dump(user)
+        expires = datetime.timedelta(days=7)
+        user_data.update({"token": create_access_token(user_data, expires)})
+
+        return make_response(jsonify(user_data), 201)
+    except:
+        # Erro genérico
+        error_data = {
+            'message': 'Erro ao tentar editar usuário',
+            'code': 'ERROR'
+        }
+        return make_response(jsonify(error_data), 500)
 
 
 @api.route("/register", methods=["POST"])
@@ -38,7 +87,7 @@ def register():
     # Verifica se a senha e a confirmação são iguais
     if not password == confirm_password:
         error_data = {
-            'message': 'As senhas não coincidem',
+            'message': 'As senhas não coi	ncidem',
             'code': 'ERROR'
         }
         return make_response(jsonify(error_data), 400)
