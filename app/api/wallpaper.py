@@ -2,6 +2,7 @@ from operator import or_
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_sqlalchemy import pagination
 from datetime import datetime
 from . import api
 from ..validations import validate_image
@@ -25,13 +26,27 @@ def get_wallpaper(id):
 @api.route('/wallpapers', methods=['GET'])
 @cross_origin(origins=Config.CLIENT_URL)
 def get_wallpapers():
+    query = request.args.get('query')
+    page = request.args.get('page', 1, type=int)
+    per_page = 1  # Define quantos itens serão mostrados por página
+
     # Utiliza join para obter os dados do usuário associado a cada imagem
     wallpapers = db.session.query(Wallpaper, User).join(
-        User, Wallpaper.user_id == User.id).all()
+        User, Wallpaper.user_id == User.id)
+
+    # Se uma query foi fornecida, filtra por título ou descrição
+    if query:
+        wallpapers = wallpapers.filter(
+            or_(Wallpaper.title.ilike(f'%{query}%'),
+                Wallpaper.description.ilike(f'%{query}%'))
+        )
+
+    # Pagina os resultados
+    wallpapers = wallpapers.paginate(page=page, per_page=per_page)
 
     wallpapers_list = []
 
-    for wallpaper, user in wallpapers:
+    for wallpaper, user in wallpapers.items:
         user_schema = UserSchema()
         user_json = user_schema.dump(user)
 
@@ -42,34 +57,15 @@ def get_wallpapers():
         wallpaper_json['user'] = user_json
         wallpapers_list.append(wallpaper_json)
 
-    return make_response(jsonify(wallpapers_list), 200)
+    # Calcula o total de resultados e adiciona a informação de hasNextPage e hasPreviousPage
+    total_results = wallpapers.total
+    has_next_page = (page * per_page) < total_results
+    has_previous_page = page > 1
+    response_data = {'wallpapers': wallpapers_list,
+                     'hasNextPage': has_next_page,
+                     'hasPreviousPage': has_previous_page}
 
-
-@api.route('/search', methods=['GET'])
-@cross_origin(origins=Config.CLIENT_URL)
-def search_wallpapers():
-    query = request.args.get('query')
-
-    wallpapers = db.session.query(Wallpaper, User).join(
-        User, Wallpaper.user_id == User.id).filter(
-        or_(Wallpaper.title.ilike(f'%{query}%'),
-            Wallpaper.description.ilike(f'%{query}%'))
-    ).all()
-
-    wallpapers_list = []
-
-    for wallpaper, user in wallpapers:
-        user_schema = UserSchema()
-        user_json = user_schema.dump(user)
-
-        wallpaper_schema = WallpaperSchema()
-        wallpaper_json = wallpaper_schema.dump(wallpaper)
-
-        # Inclui o JSON do usuário dentro do JSON do wallpaper
-        wallpaper_json['user'] = user_json
-        wallpapers_list.append(wallpaper_json)
-
-    return make_response(jsonify(wallpapers_list), 200)
+    return make_response(jsonify(response_data), 200)
 
 
 @api.route('/user-wallpapers', methods=['GET'])
@@ -77,10 +73,30 @@ def search_wallpapers():
 @jwt_required()
 def get_user_wallpapers():
     user_id = get_jwt_identity().get('id')
-    user_wallpapers = Wallpaper.query.filter_by(user_id=user_id).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 3
+    query = request.args.get('query')
+
+    user_wallpapers = Wallpaper.query.filter_by(user_id=user_id)
+
+    if query:
+        user_wallpapers = user_wallpapers.filter(
+            or_(Wallpaper.title.ilike(f'%{query}%'),
+                Wallpaper.description.ilike(f'%{query}%'))
+        )
+
+    user_wallpapers = user_wallpapers.paginate(page=page, per_page=per_page)
     wallpaper_schema = WallpaperSchema(many=True)
-    result = wallpaper_schema.dump(user_wallpapers)
-    return make_response(jsonify(result), 200)
+    result = wallpaper_schema.dump(user_wallpapers.items)
+
+    total_results = user_wallpapers.total
+    has_next_page = (page * per_page) < total_results
+    has_previous_page = page > 1
+    response_data = {'wallpapers': result,
+                     'hasNextPage': has_next_page,
+                     'hasPreviousPage': has_previous_page}
+
+    return make_response(jsonify(response_data), 200)
 
 
 @api.route('/upload_wallpaper', methods=['POST'])
