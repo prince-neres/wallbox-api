@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from os import getenv
 from datetime import datetime
 from . import api
+from ..validations import detect_nsfw_image, validate_image
 from app import db, Config, s3
 from app.models import Wallpaper, User
 from app.schemas import WallpaperSchema, UserSchema
@@ -51,10 +52,8 @@ def get_wallpapers():
 def get_user_wallpapers():
     user_id = get_jwt_identity().get('id')
     user_wallpapers = Wallpaper.query.filter_by(user_id=user_id).all()
-
     wallpaper_schema = WallpaperSchema(many=True)
     result = wallpaper_schema.dump(user_wallpapers)
-
     return make_response(jsonify(result), 200)
 
 
@@ -62,7 +61,6 @@ def get_user_wallpapers():
 @jwt_required()
 @cross_origin(origins=Config.CLIENT_URL)
 def upload_image():
-    # Obtém dados da requisição
     user = get_jwt_identity()
     form_data = request.form
     file = request.files['image']
@@ -72,6 +70,17 @@ def upload_image():
     uuid_code = str(uuid.uuid4())
     filename = f'{uuid_code}-{file.filename.strip()}'
 
+    # Valida se há conteúdo NSFW na imagem
+    result_detected_image = detect_nsfw_image(file)
+    is_safe = validate_image(result_detected_image)
+    if not is_safe:
+        error_data = {
+            'message': 'Conteúdo inadequado detectado na imagem',
+            'code': 'NSFW_DETECTED'
+        }
+        return make_response(jsonify(error_data), 400)
+
+    # Valida se campos foram preenchidos
     if not title or not file or not description or not tags:
         error_data = {
             'message': 'O campo título, descrição, tags e a anexação da imagem precisam ser preenchidos',
@@ -84,7 +93,7 @@ def upload_image():
     if len(file.read()) > max_image_size:
         error_data = {
             'message': 'Tamanho da imagem excedido',
-            'code': 'ERROR'
+            'code': 'INVALID_SIZE_IMAGE'
         }
         return make_response(jsonify(error_data), 400)
     file.seek(0)
@@ -145,6 +154,7 @@ def update_wallpaper(id):
     tags = eval(form_data.get('tags'))
     description = form_data.get('description')
 
+    # Valida se campos foram preenchidos
     if not title or not description or not tags:
         error_data = {
             'message': 'O campo título, descrição e tags precisam ser preenchidos',
