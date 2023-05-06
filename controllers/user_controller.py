@@ -43,7 +43,8 @@ def update_user(id):
         user_schema = UserSchema()
         user_data = user_schema.dump(user)
         expires = datetime.timedelta(days=7)
-        user_data.update({"token": create_access_token(user_data, expires)})
+        user_data.update({"token": create_access_token(
+            user_data, expires_delta=expires)})
 
         return make_response(jsonify(user_data), 201)
     except:
@@ -78,7 +79,8 @@ def register():
         user_json = user_schema.dump(new_user)
 
         expires = datetime.timedelta(days=7)
-        user_json.update({"token": create_access_token(user_json, expires)})
+        user_json.update({"token": create_access_token(
+            user_json, expires_delta=expires)})
         return make_response(jsonify(user_json), 201)
     except:
         # Erro genérico
@@ -104,7 +106,8 @@ def login():
         user_json = user_schema.dump(user)
 
         expires = datetime.timedelta(days=7)
-        user_json.update({"token": create_access_token(user_json, expires)})
+        user_json.update({"token": create_access_token(
+            user_json, expires_delta=expires)})
 
         return make_response(jsonify(user_json), 200)
 
