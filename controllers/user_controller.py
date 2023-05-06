@@ -4,10 +4,10 @@ from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_requir
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 from . import api
-from ..validations import validate_image
+from utils.validations import validate_image
 from app import db, Config, s3
-from app.schemas import UserSchema
-from app.models import User
+from schemas.user_schema import UserSchema
+from models.user import User
 import datetime
 import uuid
 

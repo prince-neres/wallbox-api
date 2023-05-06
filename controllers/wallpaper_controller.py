@@ -5,10 +5,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_sqlalchemy import pagination
 from datetime import datetime
 from . import api
-from ..validations import validate_image
+from utils.validations import validate_image
 from app import db, Config, s3
-from app.models import Wallpaper, User
-from app.schemas import WallpaperSchema, UserSchema
+from models.wallpaper import Wallpaper
+from models.user import User
+from schemas.wallpaper_schema import WallpaperSchema
+from schemas.user_schema import UserSchema
 import uuid
 
 
