@@ -1,6 +1,5 @@
 import requests
 import json
-from flask import jsonify, make_response
 from app import Config
 
 
@@ -63,46 +62,55 @@ def validate_image(file):
     result_detected_image = request_to_detect_nsfw_image(file)
     is_safe = validate_nsfw_in_image(result_detected_image)
     if not is_safe:
-        error_data = {
+        return {
             'message': 'Conteúdo inadequado detectado na imagem',
             'code': 'NSFW_DETECTED'
         }
-        return make_response(jsonify(error_data), 400)
 
     # Verifica tamanho do arquivo
     max_image_size = 10 * 1024 * 1024  # 10 MB
     if len(file.read()) > max_image_size:
-        error_data = {
+        return {
             'message': 'Tamanho da imagem excedido',
             'code': 'INVALID_SIZE_IMAGE'
         }
-        return make_response(jsonify(error_data), 400)
     file.seek(0)
 
     # Verifica a extensão do arquivo
     allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
     if not '.' in file.filename or file.filename.split('.')[-1].lower() not in allowed_extensions:
-        error_data = {
+        return {
             'message': 'O arquivo precisa ter uma extensão válida (png, jpg, jpeg ou gif)',
             'code': 'INVALID_FILE_EXTENSION'
         }
-        return make_response(jsonify(error_data), 400)
+
+    return None
 
 
 def wallpaper_upload_validate(title, file, description, tags):
     # Valida se campos foram preenchidos
     if not title or not file or not description or not tags:
-        error_data = {
+        return {
             'message': 'O campo título, descrição, tags e a anexação da imagem precisam ser preenchidos',
             'code': 'INVALID_FILE_EXTENSION'
         }
-        return make_response(jsonify(error_data), 400)
+
+    return None
 
 
-def wallpaper_update_validate(title, description, tags):
+def wallpaper_update_validate(title, description, tags, wallpaper, user):
+    # Valida se campos foram preenchidos
     if not title or not description or not tags:
-        error_data = {
+        return {
             'message': 'O campo título, descrição e tags precisam ser preenchidos',
             'code': 'INVALID_DATA'
         }
-        return make_response(jsonify(error_data), 400)
+
+    # Verifica se o usuário é dono do wallpaper
+    if wallpaper.user_id != user.get('id'):
+        return {
+            'message': 'Usuário não autorizado a atualizar este wallpaper',
+            'code': 'UNAUTHORIZED'
+        }
+
+    return None

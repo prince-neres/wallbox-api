@@ -1,14 +1,14 @@
-import uuid
 from sqlalchemy import or_
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from . import api
-from utils import validate_image, wallpaper_upload_validate, wallpaper_update_validate
+from utils import wallpaper_upload_validate, wallpaper_update_validate
 from app import db, Config, s3
 from models import Wallpaper, User
 from schemas import WallpaperSchema, UserSchema
+from services import s3_image_upload
 
 
 @api.route('/wallpaper/<int:id>', methods=['GET'])
@@ -16,10 +16,12 @@ from schemas import WallpaperSchema, UserSchema
 @cross_origin(origins=Config.CLIENT_URL)
 def get_wallpaper(id):
     wallpaper = Wallpaper.query.filter_by(id=id).first_or_404(
-        description=f"Wallpaper with id {id} not found")
+        description=f"Wallpaper com id {id} não encontrado!")
+
     wallpaper_schema = WallpaperSchema()
-    result = wallpaper_schema.dump(wallpaper)
-    return make_response(jsonify(result), 200)
+    serialized_wallpaper = wallpaper_schema.dump(wallpaper)
+
+    return jsonify(serialized_wallpaper), 200
 
 
 @api.route('/wallpapers', methods=['GET'])
@@ -71,23 +73,32 @@ def get_wallpapers():
 @cross_origin(origins=Config.CLIENT_URL)
 @jwt_required()
 def get_user_wallpapers():
+    # Obtém o ID do usuário a partir do token JWT
     user_id = get_jwt_identity().get('id')
+
+    # Define a página atual e a quantidade de itens por página
     page = request.args.get('page', 1, type=int)
     per_page = 6
+
+    # Obtém o parâmetro de busca (query) da URL, se houver
     query = request.args.get('query')
 
+    # Cria a query inicial, filtrando por usuário
     user_wallpapers = Wallpaper.query.filter_by(user_id=user_id)
 
+    # Se houver parâmetro de busca, filtra por título ou descrição que contenham o termo
     if query:
-        user_wallpapers = user_wallpapers.filter(
-            or_(Wallpaper.title.ilike(f'%{query}%'),
-                Wallpaper.description.ilike(f'%{query}%'))
-        )
+        user_wallpapers = user_wallpapers.filter(or_(Wallpaper.title.ilike(f'%{query}%'),
+                                                     Wallpaper.description.ilike(f'%{query}%')))
 
+    # Pagina os resultados da query
     user_wallpapers = user_wallpapers.paginate(page=page, per_page=per_page)
+
+    # Faz o dump dos dados usando o schema de Wallpaper
     wallpaper_schema = WallpaperSchema(many=True)
     result = wallpaper_schema.dump(user_wallpapers.items)
 
+    # Cria um objeto de resposta com as informações de paginação
     total_results = user_wallpapers.total
     has_next_page = (page * per_page) < total_results
     has_previous_page = page > 1
@@ -95,95 +106,103 @@ def get_user_wallpapers():
                      'hasNextPage': has_next_page,
                      'hasPreviousPage': has_previous_page}
 
+    # Retorna a resposta em JSON com código HTTP 200 (OK)
     return make_response(jsonify(response_data), 200)
 
 
 @api.route('/upload_wallpaper', methods=['POST'])
 @jwt_required()
 @cross_origin(origins=Config.CLIENT_URL)
-def upload_image():
+def upload_wallpaper():
+    # Obtém dados da requisição
     user = get_jwt_identity()
     form_data = request.form
-    file = request.files['image']
+    file = request.files.get('image')
     title = form_data.get('title')
-    tags = eval(form_data.get('tags'))
+    tags = form_data.get('tags')
     description = form_data.get('description')
-    uuid_code = str(uuid.uuid4())
-    filename = f'{uuid_code}-{file.filename.strip()}'
 
-    wallpaper_upload_validate(title, file, description, tags)
+    # Validar dados do wallpaper
+    error = wallpaper_upload_validate(title, file, description, tags)
+    if error:
+        return make_response(jsonify(error), 400)
 
+    # Realiza upload da imagem para o bucket S3
     try:
-        # Faz o upload do arquivo para o S3
-        validate_image(file)
-        s3.upload_fileobj(file, Config.AWS_BUCKET_NAME, filename)
-        url = f"{Config.AWS_SS3_CUSTOM_DOMAIN}/{filename}"
-
-        # Adicionar imagem no banco
-        new_wallpaper = Wallpaper(
-            user_id=user.get('id'), title=title, description=description, filename=filename, image=url, tags=tags)
-        db.session.add(new_wallpaper)
-        db.session.commit()
-
-        # Cria os objetos de schema e faz o dump dos dados
-        wallpaper_schema = WallpaperSchema()
-        wallpaper_data = wallpaper_schema.dump(new_wallpaper)
-
-        return make_response(jsonify(wallpaper_data), 201)
-    except:
-        # Erro genérico
+        image_url, filename = s3_image_upload(file)
+    except Exception as e:
         error_data = {
-            'message': 'Erro ao tentar criar imagem',
+            'message': f'Erro ao tentar enviar imagem para o bucket S3: {str(e)}',
             'code': 'ERROR'
         }
         return make_response(jsonify(error_data), 500)
+
+    # Cria um novo wallpaper e adiciona ao banco de dados
+    new_wallpaper = Wallpaper(
+        user_id=user['id'],
+        title=title,
+        description=description,
+        filename=filename,
+        image=image_url,
+        tags=eval(tags)
+    )
+    db.session.add(new_wallpaper)
+    db.session.commit()
+
+    # Retorna dados do wallpaper criado
+    wallpaper_schema = WallpaperSchema()
+    wallpaper_data = wallpaper_schema.dump(new_wallpaper)
+
+    return make_response(jsonify(wallpaper_data), 201)
 
 
 @api.route('/wallpaper/<int:id>', methods=['DELETE'])
 @jwt_required()
 @cross_origin(origins=Config.CLIENT_URL)
 def delete_wallpaper(id):
-    wallpaper = Wallpaper.query.filter_by(id=id).first_or_404(
-        description=f"Wallpaper com id {id} não encontrado!")
+    # Busca o wallpaper pelo id, ou retorna um erro 404 se não encontrado
+    wallpaper = Wallpaper.query.get_or_404(
+        id, description=f"Wallpaper com id {id} não encontrado!")
+
+    # Remove o wallpaper do banco de dados
     db.session.delete(wallpaper)
     db.session.commit()
-    return make_response(jsonify({'message': 	'Wallpaper deletado com sucesso!', 'code': 'SUCCESS'}), 200)
+
+    # Retorna a mensagem de sucesso
+    response_data = {
+        'message': 'Wallpaper deletado com sucesso!', 'code': 'SUCCESS'}
+    return make_response(jsonify(response_data), 200)
 
 
 @api.route('/wallpaper/<int:id>', methods=['PUT'])
 @jwt_required()
 @cross_origin(origins=Config.CLIENT_URL)
 def update_wallpaper(id):
-    # Obtém dados da requisição
     user = get_jwt_identity()
-    form_data = request.form
+
+    # Obtém os dados da requisição
+    form_data = request.form.to_dict(flat=True)
     title = form_data.get('title')
-    tags = eval(form_data.get('tags'))
+    tags = form_data.get('tags')
     description = form_data.get('description')
 
-    wallpaper_update_validate(title, description, tags)
-
     # Verifica se o wallpaper existe
-    wallpaper = Wallpaper.query.filter_by(id=id).first_or_404(
-        description=f"Wallpaper with id {id} not found")
+    wallpaper = Wallpaper.query.get_or_404(
+        id, description=f"Wallpaper with id {id} not found")
 
-    # Verifica se o usuário é dono do wallpaper
-    if wallpaper.user_id != user.get('id'):
-        error_data = {
-            'message': 'Usuário não autorizado a atualizar este wallpaper',
-            'code': 'UNAUTHORIZED'
-        }
-        return make_response(jsonify(error_data), 401)
+    # Validar dados do Wallpaper
+    error = wallpaper_update_validate(
+        title, description, tags, wallpaper, user)
+    if error:
+        return make_response(jsonify(error), 401)
 
     # Atualiza informações do wallpaper
     wallpaper.title = title
     wallpaper.description = description
-    wallpaper.tags = tags
+    wallpaper.tags = eval(tags)
     wallpaper.date_updated = datetime.now()
     db.session.commit()
 
-    # Cria o objeto de retorno
-    wallpaper_schema = WallpaperSchema()
-    data = wallpaper_schema.dump(wallpaper)
-
+    # Retorna o objeto atualizado
+    data = WallpaperSchema().dump(wallpaper)
     return make_response(jsonify(data), 200)
