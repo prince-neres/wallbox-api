@@ -45,7 +45,7 @@ def user_login_validate(email, user, password):
         return make_response(jsonify({'message': 'Senha incorreta', 'code': 'INVALID_PASSWORD'}), 401)
 
 
-def user_update_validate(current_user, username):
+def user_update_validate(current_user, id, username):
     if current_user.get('id') != id:
         error_data = {
             'message': 'Sem permissão',

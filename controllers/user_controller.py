@@ -21,7 +21,7 @@ def update_user(id):
     file = request.files.get('image')
     username = form_data.get('username')
 
-    user_update_validate(current_user, username)
+    user_update_validate(current_user, id, username)
 
     try:
         user = User.query.filter_by(id=id).first()
@@ -66,7 +66,7 @@ def register():
 
     user = User.query.filter_by(email=email).first()
 
-    user_login_validate(username, email, password, confirm_password, user)
+    user_register_validate(username, email, password, confirm_password, user)
 
     try:
         new_user = User(username=username, email=email,
@@ -98,7 +98,7 @@ def login():
         password = data.get('password', None)
         user = User.query.filter_by(email=email).first()
 
-        user_register_validate(email=email, password=password, user=user)
+        user_login_validate(email=email, password=password, user=user)
 
         user_schema = UserSchema()
         user_json = user_schema.dump(user)
