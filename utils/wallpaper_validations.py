@@ -87,3 +87,22 @@ def validate_image(file):
             'code': 'INVALID_FILE_EXTENSION'
         }
         return make_response(jsonify(error_data), 400)
+
+
+def wallpaper_upload_validate(title, file, description, tags):
+    # Valida se campos foram preenchidos
+    if not title or not file or not description or not tags:
+        error_data = {
+            'message': 'O campo título, descrição, tags e a anexação da imagem precisam ser preenchidos',
+            'code': 'INVALID_FILE_EXTENSION'
+        }
+        return make_response(jsonify(error_data), 400)
+
+
+def wallpaper_update_validate(title, description, tags):
+    if not title or not description or not tags:
+        error_data = {
+            'message': 'O campo título, descrição e tags precisam ser preenchidos',
+            'code': 'INVALID_DATA'
+        }
+        return make_response(jsonify(error_data), 400)

@@ -1,6 +1,6 @@
-from app import db
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import ARRAY
+from app import db
 
 
 class Wallpaper(db.Model):

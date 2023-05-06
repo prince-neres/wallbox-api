@@ -1,15 +1,15 @@
+import json
+import datetime
+import uuid
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
-from werkzeug.security import generate_password_hash, check_password_hash
-import json
+from werkzeug.security import generate_password_hash
 from . import api
-from utils.validations import validate_image
+from utils import validate_image, user_login_validate, user_register_validate, user_update_validate
 from app import db, Config, s3
-from schemas.user_schema import UserSchema
-from models.user import User
-import datetime
-import uuid
+from schemas import UserSchema
+from models import User
 
 
 @api.route("/user/<int:id>", methods=["PUT"])
@@ -21,19 +21,7 @@ def update_user(id):
     file = request.files.get('image')
     username = form_data.get('username')
 
-    if current_user.get('id') != id:
-        error_data = {
-            'message': 'Sem permissão',
-            'code': 'NOT_PERMISSION'
-        }
-        return make_response(jsonify(error_data), 400)
-
-    if not username:
-        error_data = {
-            'message': 'O campo usuário precisa ser preenchido',
-            'code': 'INVALID_DATA'
-        }
-        return make_response(jsonify(error_data), 400)
+    user_update_validate(current_user, username)
 
     try:
         user = User.query.filter_by(id=id).first()
@@ -76,30 +64,9 @@ def register():
     password = data.get('password')
     confirm_password = data.get('confirm_password')
 
-    # Verifica se todos os campos estão presentes
-    if not username or not email or not password:
-        error_data = {
-            'message': 'Nome de usuário, email ou senha ausente',
-            'code': 'ERROR'
-        }
-        return make_response(jsonify(error_data), 400)
-
-    # Verifica se a senha e a confirmação são iguais
-    if not password == confirm_password:
-        error_data = {
-            'message': 'As senhas não coi	ncidem',
-            'code': 'ERROR'
-        }
-        return make_response(jsonify(error_data), 400)
-
-    # Verifica se já existe um usuário com o mesmo email
     user = User.query.filter_by(email=email).first()
-    if user is not None:
-        error_data = {
-            'message': 'Já existe um usuário com esse email',
-            'code': 'ERROR'
-        }
-        return make_response(jsonify(error_data), 409)
+
+    user_login_validate(username, email, password, confirm_password, user)
 
     try:
         new_user = User(username=username, email=email,
@@ -129,23 +96,9 @@ def login():
         data = json.loads(request.data)
         email = data.get('email', None)
         password = data.get('password', None)
-
-        # Validação de entrada de dados
-        if not email or not isinstance(email, str):
-            return make_response(jsonify({'message': 'Email inválido', 'code': 'INVALID_EMAIL'}), 400)
-
-        if not password or not isinstance(password, str):
-            return make_response(jsonify({'message': 'Senha inválida', 'code': 'INVALID_PASSWORD'}), 400)
-
         user = User.query.filter_by(email=email).first()
 
-        if user is None:
-            # Usuário não encontrado
-            return make_response(jsonify({'message': 'Email incorreto', 'code': 'USER_NOT_FOUND'}), 404)
-
-        if not check_password_hash(user.password, password):
-            # Senha incorreta
-            return make_response(jsonify({'message': 'Senha incorreta', 'code': 'INVALID_PASSWORD'}), 401)
+        user_register_validate(email=email, password=password, user=user)
 
         user_schema = UserSchema()
         user_json = user_schema.dump(user)

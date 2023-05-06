@@ -1,17 +1,14 @@
+import uuid
 from operator import or_
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from flask_sqlalchemy import pagination
 from datetime import datetime
 from . import api
-from utils.validations import validate_image
+from utils import validate_image, wallpaper_upload_validate, wallpaper_update_validate
 from app import db, Config, s3
-from models.wallpaper import Wallpaper
-from models.user import User
-from schemas.wallpaper_schema import WallpaperSchema
-from schemas.user_schema import UserSchema
-import uuid
+from models import Wallpaper, User
+from schemas import WallpaperSchema, UserSchema
 
 
 @api.route('/wallpaper/<int:id>', methods=['GET'])
@@ -114,13 +111,7 @@ def upload_image():
     uuid_code = str(uuid.uuid4())
     filename = f'{uuid_code}-{file.filename.strip()}'
 
-    # Valida se campos foram preenchidos
-    if not title or not file or not description or not tags:
-        error_data = {
-            'message': 'O campo título, descrição, tags e a anexação da imagem precisam ser preenchidos',
-            'code': 'INVALID_FILE_EXTENSION'
-        }
-        return make_response(jsonify(error_data), 400)
+    wallpaper_upload_validate(title, file, description, tags)
 
     try:
         # Faz o upload do arquivo para o S3
@@ -153,7 +144,7 @@ def upload_image():
 @cross_origin(origins=Config.CLIENT_URL)
 def delete_wallpaper(id):
     wallpaper = Wallpaper.query.filter_by(id=id).first_or_404(
-        description=f"Wallpaper with id {id} not found")
+        description=f"Wallpaper com id {id} não encontrado!")
     db.session.delete(wallpaper)
     db.session.commit()
     return make_response(jsonify({'message': 	'Wallpaper deletado com sucesso!', 'code': 'SUCCESS'}), 200)
@@ -170,13 +161,7 @@ def update_wallpaper(id):
     tags = eval(form_data.get('tags'))
     description = form_data.get('description')
 
-    # Valida se campos foram preenchidos
-    if not title or not description or not tags:
-        error_data = {
-            'message': 'O campo título, descrição e tags precisam ser preenchidos',
-            'code': 'INVALID_DATA'
-        }
-        return make_response(jsonify(error_data), 400)
+    wallpaper_update_validate(title, description, tags)
 
     # Verifica se o wallpaper existe
     wallpaper = Wallpaper.query.filter_by(id=id).first_or_404(
