@@ -1,5 +1,5 @@
 import uuid
-from operator import or_
+from sqlalchemy import or_
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -27,7 +27,7 @@ def get_wallpaper(id):
 def get_wallpapers():
     query = request.args.get('query')
     page = request.args.get('page', 1, type=int)
-    per_page = 1  # Define quantos itens serão mostrados por página
+    per_page = 6  # Define quantos itens serão mostrados por página
 
     # Utiliza join para obter os dados do usuário associado a cada imagem
     wallpapers = db.session.query(Wallpaper, User).join(
@@ -73,7 +73,7 @@ def get_wallpapers():
 def get_user_wallpapers():
     user_id = get_jwt_identity().get('id')
     page = request.args.get('page', 1, type=int)
-    per_page = 3
+    per_page = 6
     query = request.args.get('query')
 
     user_wallpapers = Wallpaper.query.filter_by(user_id=user_id)
