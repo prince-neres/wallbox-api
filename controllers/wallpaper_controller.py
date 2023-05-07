@@ -29,7 +29,7 @@ def get_wallpaper(id):
 def get_wallpapers():
     query = request.args.get('query')
     page = request.args.get('page', 1, type=int)
-    per_page = 6  # Define quantos itens serão mostrados por página
+    per_page = 9  # Define quantos itens serão mostrados por página
 
     # Utiliza join para obter os dados do usuário associado a cada imagem
     wallpapers = db.session.query(Wallpaper, User).join(
@@ -78,7 +78,7 @@ def get_user_wallpapers():
 
     # Define a página atual e a quantidade de itens por página
     page = request.args.get('page', 1, type=int)
-    per_page = 6
+    per_page = 9
 
     # Obtém o parâmetro de busca (query) da URL, se houver
     query = request.args.get('query')

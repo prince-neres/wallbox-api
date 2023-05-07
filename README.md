@@ -1,3 +1,16 @@
+# Aplicação de Wallpapers WallBox
+
+Projeto feito como meio para práticar habilidades.
+
+## Como rodar servidor passo a passo:
+
+1. Clone o projeto com `git clone https://github.com/prince-neres/wallbox-api.git`
+2. Entre no diretório do projeto com cd `wallbox-api `
+3. Crie um ambiente python o comando `python3 -m venv venv`
+4. Ative o ambiente `. venv/bin/activate`
+5. Instale as dependências da aplicação `pip install -r requirements.txt`
+6. Inicie o servidor `python run.py`
+
 # Endpoints da API;
 
 A seguir, estão listados os endpoints disponíveis nesta API, juntamente com sua descrição, método aceito e payload:
