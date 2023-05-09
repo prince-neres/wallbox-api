@@ -10,6 +10,8 @@ from models import Wallpaper, User
 from schemas import WallpaperSchema, UserSchema
 from services import s3_image_upload
 
+print(Config.SQLALCHEMY_DATABASE_URI)
+
 
 @api.route('/wallpaper/<int:id>', methods=['GET'])
 @jwt_required()
@@ -38,8 +40,9 @@ def get_wallpapers():
     # Se uma query foi fornecida, filtra por título ou descrição
     if query:
         wallpapers = wallpapers.filter(
-            or_(Wallpaper.title.ilike(f'%{query}%'),
-                Wallpaper.description.ilike(f'%{query}%'))
+        or_(Wallpaper.title.ilike(f'%{query}%'),
+            Wallpaper.description.ilike(f'%{query}%'),
+            Wallpaper.tags.any(f'{query}'))
         )
 
     # Pagina os resultados
@@ -88,9 +91,11 @@ def get_user_wallpapers():
 
     # Se houver parâmetro de busca, filtra por título ou descrição que contenham o termo
     if query:
-        user_wallpapers = user_wallpapers.filter(or_(Wallpaper.title.ilike(f'%{query}%'),
-                                                     Wallpaper.description.ilike(f'%{query}%')))
-
+        user_wallpapers = user_wallpapers.filter(
+        or_(Wallpaper.title.ilike(f'%{query}%'),
+            Wallpaper.description.ilike(f'%{query}%'),
+            Wallpaper.tags.any(f'{query}'))
+        )
     # Pagina os resultados da query
     user_wallpapers = user_wallpapers.paginate(page=page, per_page=per_page)
 
