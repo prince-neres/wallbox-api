@@ -91,7 +91,7 @@ def get_user_wallpapers():
 
     # Se houver parâmetro de busca, filtra por título ou descrição que contenham o termo
     if query:
-        wallpapers = wallpapers.filter(
+        user_wallpapers = user_wallpapers.filter(
         or_(Wallpaper.title.ilike(f'%{query}%'),
             Wallpaper.description.ilike(f'%{query}%'),
             Wallpaper.tags.any(f'{query}'))
