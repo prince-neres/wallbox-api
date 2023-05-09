@@ -38,8 +38,9 @@ def get_wallpapers():
     # Se uma query foi fornecida, filtra por título ou descrição
     if query:
         wallpapers = wallpapers.filter(
-            or_(Wallpaper.title.ilike(f'%{query}%'),
-                Wallpaper.description.ilike(f'%{query}%'))
+        or_(Wallpaper.title.ilike(f'%{query}%'),
+            Wallpaper.description.ilike(f'%{query}%'),
+            Wallpaper.tags.any(f'{query}'))
         )
 
     # Pagina os resultados
