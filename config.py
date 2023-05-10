@@ -7,8 +7,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = getenv('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = getenv('JWT_SECRET_KEY')
-    CLIENT_URL = getenv(
-        'CLIENT_URL') if ENVIRONMENT == 'prod' else 'http://localhost:5173'
+    CLIENT_URL = getenv('CLIENT_URL')
     AWS_ACCESS_KEY_ID = getenv('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = getenv('AWS_SECRET_ACCESS_KEY')
     AWS_BUCKET_NAME = getenv('AWS_BUCKET_NAME')
