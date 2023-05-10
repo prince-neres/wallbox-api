@@ -37,7 +37,7 @@ def update_user(id):
         user.username = username
         if file:
             # Faz o upload da nova imagem para o armazenamento S3
-            url, filename = s3_image_upload(file)
+            url, filename = s3_image_upload(file, image='avatar')
             user.image = url
 
         # Salva as alterações no banco de dados

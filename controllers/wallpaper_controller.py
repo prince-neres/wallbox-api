@@ -4,7 +4,7 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from . import api
-from utils import wallpaper_upload_validate, wallpaper_update_validate
+from utils import wallpaper_upload_validate, wallpaper_update_validate, format_alias_string
 from app import db, Config, s3
 from models import Wallpaper, User
 from schemas import WallpaperSchema, UserSchema
@@ -40,9 +40,9 @@ def get_wallpapers():
     # Se uma query foi fornecida, filtra por título ou descrição
     if query:
         wallpapers = wallpapers.filter(
-        or_(Wallpaper.title.ilike(f'%{query}%'),
-            Wallpaper.description.ilike(f'%{query}%'),
-            Wallpaper.tags.any(f'{query}'))
+            or_(Wallpaper.title.ilike(f'%{query}%'),
+                Wallpaper.description.ilike(f'%{query}%'),
+                Wallpaper.tags.any(f'{query}'))
         )
 
     # Pagina os resultados
@@ -92,10 +92,11 @@ def get_user_wallpapers():
     # Se houver parâmetro de busca, filtra por título ou descrição que contenham o termo
     if query:
         user_wallpapers = user_wallpapers.filter(
-        or_(Wallpaper.title.ilike(f'%{query}%'),
-            Wallpaper.description.ilike(f'%{query}%'),
-            Wallpaper.tags.any(f'{query}'))
+            or_(Wallpaper.title.ilike(f'%{query}%'),
+                Wallpaper.description.ilike(f'%{query}%'),
+                Wallpaper.tags.any(f'{query}'))
         )
+
     # Pagina os resultados da query
     user_wallpapers = user_wallpapers.paginate(page=page, per_page=per_page)
 
@@ -125,6 +126,7 @@ def upload_wallpaper():
     file = request.files.get('image')
     title = form_data.get('title')
     tags = form_data.get('tags')
+    tags = [format_alias_string(tag) for tag in eval(tags)]
     description = form_data.get('description')
 
     # Validar dados do wallpaper
@@ -134,7 +136,7 @@ def upload_wallpaper():
 
     # Realiza upload da imagem para o bucket S3
     try:
-        image_url, filename = s3_image_upload(file)
+        image_url, filename = s3_image_upload(file, image='wallpaper')
     except Exception as e:
         error_data = {
             'message': f'Erro ao tentar enviar imagem para o bucket S3: {str(e)}',
@@ -149,7 +151,7 @@ def upload_wallpaper():
         description=description,
         filename=filename,
         image=image_url,
-        tags=eval(tags)
+        tags=tags
     )
     db.session.add(new_wallpaper)
     db.session.commit()
@@ -189,6 +191,7 @@ def update_wallpaper(id):
     form_data = request.form.to_dict(flat=True)
     title = form_data.get('title')
     tags = form_data.get('tags')
+    tags = [format_alias_string(tag) for tag in eval(tags)]
     description = form_data.get('description')
 
     # Verifica se o wallpaper existe
@@ -204,7 +207,7 @@ def update_wallpaper(id):
     # Atualiza informações do wallpaper
     wallpaper.title = title
     wallpaper.description = description
-    wallpaper.tags = eval(tags)
+    wallpaper.tags = tags
     wallpaper.date_updated = datetime.now()
     db.session.commit()
 
