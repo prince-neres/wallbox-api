@@ -1,5 +1,5 @@
 import math
-from sqlalchemy import or_
+from sqlalchemy import or_, desc
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -45,6 +45,9 @@ def get_wallpapers():
                 Wallpaper.description.ilike(f'%{query}%'),
                 Wallpaper.tags.any(f'{query}'))
         )
+
+        # Ordena wallpapers por data de alteração
+    wallpapers = wallpapers.order_by(desc(Wallpaper.date_updated))
 
     # Pagina os resultados
     wallpapers = wallpapers.paginate(page=page, per_page=per_page)
@@ -99,6 +102,9 @@ def get_user_wallpapers():
                 Wallpaper.description.ilike(f'%{query}%'),
                 Wallpaper.tags.any(f'{query}'))
         )
+
+    # Ordena wallpapers por data de alteração
+    user_wallpapers = user_wallpapers.order_by(desc(Wallpaper.date_updated))
 
     # Pagina os resultados da query
     user_wallpapers = user_wallpapers.paginate(page=page, per_page=per_page)
