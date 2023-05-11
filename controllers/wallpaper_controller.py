@@ -1,3 +1,4 @@
+import math
 from sqlalchemy import or_
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
@@ -65,9 +66,11 @@ def get_wallpapers():
     total_results = wallpapers.total
     has_next_page = (page * per_page) < total_results
     has_previous_page = page > 1
+    totalPages = math.ceil(total_results / per_page)
     response_data = {'wallpapers': wallpapers_list,
                      'hasNextPage': has_next_page,
-                     'hasPreviousPage': has_previous_page}
+                     'hasPreviousPage': has_previous_page,
+                     'pages': totalPages}
 
     return make_response(jsonify(response_data), 200)
 
@@ -108,9 +111,11 @@ def get_user_wallpapers():
     total_results = user_wallpapers.total
     has_next_page = (page * per_page) < total_results
     has_previous_page = page > 1
+    totalPages = math.ceil(total_results / per_page)
     response_data = {'wallpapers': result,
                      'hasNextPage': has_next_page,
-                     'hasPreviousPage': has_previous_page}
+                     'hasPreviousPage': has_previous_page,
+                     'pages': totalPages}
 
     # Retorna a resposta em JSON com código HTTP 200 (OK)
     return make_response(jsonify(response_data), 200)

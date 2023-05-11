@@ -2,6 +2,7 @@ from app import s3, Config
 from utils import validate_image
 import uuid
 
+
 def s3_image_upload(file, image):
     # Faz o upload da imagem para o S3
     bucket_file = 'wallpapers' if image == 'wallpaper' else 'avatars'
