@@ -3,7 +3,7 @@ import datetime
 from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 from . import api
 from utils import user_login_validate, user_register_validate, user_update_validate
 from app import db, Config, s3

@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from . import api
 from utils import wallpaper_upload_validate, wallpaper_update_validate, format_alias_string
-from app import db, Config, s3
+from app import db, Config
 from models import Wallpaper, User
 from schemas import WallpaperSchema, UserSchema
 from services import s3_image_upload
