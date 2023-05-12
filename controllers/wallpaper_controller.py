@@ -72,7 +72,7 @@ def get_wallpapers():
 @api.route('/user-wallpapers', methods=['GET'])
 @cross_origin(origins=Config.CLIENT_URL)
 @jwt_required()
-def get_user_wallpapers():
+def get_wallpapers_from_user():
     user_id = get_jwt_identity().get('id')
     page = request.args.get('page', 1, type=int)
     per_page = 9

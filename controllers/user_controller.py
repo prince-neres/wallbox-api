@@ -53,7 +53,7 @@ def update_user(id):
 
 @api.route("/register", methods=["POST"])
 @cross_origin(origins=Config.CLIENT_URL)
-def register():
+def register_user():
     data = json.loads(request.data)
     username = data.get('username')
     email = data.get('email')
