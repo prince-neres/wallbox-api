@@ -4,7 +4,6 @@ import uuid
 
 
 def s3_image_upload(file, image):
-    # Faz o upload da imagem para o S3
     bucket_file = 'wallpapers' if image == 'wallpaper' else 'avatars'
     uuid_code = str(uuid.uuid4())
     filename = f'{bucket_file}/{uuid_code}-{file.filename.strip()}'
