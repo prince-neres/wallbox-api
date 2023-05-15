@@ -220,6 +220,13 @@ def add_download(id):
 @cross_origin(origins=Config.CLIENT_URL)
 def add_favorite(id):
     user_id = get_jwt_identity().get('id')
+
+    already_favorite = Favorite.query.filter_by(
+        user_id=user_id, wallpaper_id=id).first()
+
+    if already_favorite:
+        return make_response(jsonify({'message': 'Wallpaper já é favorito!', 'CODE': 'ERROR'}))
+
     wallpaper = Wallpaper.query.get_or_404(id)
     favorite = Favorite(wallpaper_id=wallpaper.id, user_id=user_id)
     db.session.add(favorite)
