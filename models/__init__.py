@@ -1,2 +1,2 @@
 from .user import User
-from .wallpaper import Wallpaper
+from .wallpaper import Wallpaper, Favorite

@@ -9,3 +9,5 @@ class WallpaperSchema(Schema):
     image = fields.Str(required=True)
     date_created = fields.DateTime(dump_only=True)
     date_updated = fields.DateTime(dump_only=True)
+    downloads = fields.Int(dump_only=True)
+    favorite_count = fields.Int(dump_only=True)
