@@ -3,12 +3,6 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from app import db
 
 
-class Favorite(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    wallpaper_id = db.Column(db.Integer, db.ForeignKey('wallpaper.id'))
-
-
 class Wallpaper(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

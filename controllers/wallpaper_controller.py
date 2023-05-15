@@ -7,7 +7,7 @@ from datetime import datetime
 from . import api
 from utils import wallpaper_upload_validate, wallpaper_update_validate, format_alias_string
 from app import db, Config
-from models import Wallpaper, User, Favorite
+from models import Wallpaper, User
 from schemas import WallpaperSchema, UserSchema
 from services import s3_image_upload
 
@@ -190,45 +190,3 @@ def update_wallpaper(id):
 
     data = WallpaperSchema().dump(wallpaper)
     return make_response(jsonify(data), 200)
-
-
-@api.route('/wallpaper/<int:id>/disfavor', methods=['DELETE'])
-@jwt_required()
-@cross_origin(origins=Config.CLIENT_URL)
-def favorite_delete(id):
-    user_id = get_jwt_identity().get('id')
-    favorite = Favorite.query.filter_by(
-        user_id=user_id, wallpaper_id=id).first()
-
-    if favorite:
-        db.session.delete(favorite)
-        db.session.commit()
-        return jsonify({'message': 'Desfavoritado com sucesso!', 'CODE': 'SUCCESS'})
-    return jsonify({'message': 'Favorito não econtrado', 'CODE': 'ERROR'})
-
-
-@api.route('/wallpaper/<int:id>/downloads', methods=['POST'])
-@cross_origin(origins=Config.CLIENT_URL)
-def add_download(id):
-    wallpaper = Wallpaper.query.get_or_404(id)
-    wallpaper.increment_download()
-    return jsonify({'message': 'Download adicionado com sucesso!', 'CODE': 'SUCCESS'})
-
-
-@api.route('/wallpaper/<int:id>/favorite', methods=['POST'])
-@jwt_required()
-@cross_origin(origins=Config.CLIENT_URL)
-def add_favorite(id):
-    user_id = get_jwt_identity().get('id')
-
-    already_favorite = Favorite.query.filter_by(
-        user_id=user_id, wallpaper_id=id).first()
-
-    if already_favorite:
-        return make_response(jsonify({'message': 'Wallpaper já é favorito!', 'CODE': 'ERROR'}))
-
-    wallpaper = Wallpaper.query.get_or_404(id)
-    favorite = Favorite(wallpaper_id=wallpaper.id, user_id=user_id)
-    db.session.add(favorite)
-    db.session.commit()
-    return jsonify({'message': 'Favoritado com sucesso!', 'CODE': 'SUCCESS'})
