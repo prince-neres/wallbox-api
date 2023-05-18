@@ -14,7 +14,6 @@ from services import s3_image_upload
 
 @api.route('/wallpaper/<int:id>', methods=['GET'])
 @jwt_required()
-@cross_origin(origins=Config.CLIENT_URL)
 def get_wallpaper(id):
     wallpaper = Wallpaper.query.filter_by(id=id).first_or_404(
         description=f"Wallpaper com id {id} não encontrado!")
@@ -25,7 +24,6 @@ def get_wallpaper(id):
 
 
 @api.route('/wallpapers', methods=['GET'])
-@cross_origin(origins=Config.CLIENT_URL)
 def get_wallpapers():
     query = request.args.get('query')
     page = request.args.get('page', 1, type=int)
