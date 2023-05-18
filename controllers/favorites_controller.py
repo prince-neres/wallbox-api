@@ -3,8 +3,7 @@ from flask_cors import cross_origin
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from config import Config
 from models import Favorite, Wallpaper
-from . import api
-from app import db
+from controllers import api
 
 
 @api.route('/wallpaper/<int:id>/downloads', methods=['POST'])
@@ -18,10 +17,10 @@ def add_download(id):
         return make_response(jsonify({'message': f'Erro ao adicionar download {str(error)}', 'CODE': 'ERROR'}), 500)
 
 
-@api.route('/wallpaper/user_favorites', methods=['GET'])
+@api.route('/wallpaper/user_favorites_ids', methods=['GET'])
 @jwt_required()
 @cross_origin(origins=Config.CLIENT_URL)
-def user_favorites():
+def user_favorites_ids():
     try:
         user_id = get_jwt_identity().get('id')
         user_favorites = Favorite.query.filter_by(user_id=user_id)

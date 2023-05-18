@@ -1,3 +1,3 @@
-from .wallpaper_validations import validate_image, wallpaper_upload_validate, wallpaper_update_validate
-from .user_validations import user_login_validate, user_register_validate, user_update_validate
+from .wallpaper_validations import *
+from .user_validations import *
 from .formatter import format_alias_string

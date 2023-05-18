@@ -4,7 +4,7 @@ from flask import make_response, jsonify, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
-from . import api
+from controllers import api
 from utils import wallpaper_upload_validate, wallpaper_update_validate, format_alias_string
 from app import db, Config
 from models import Wallpaper, User
