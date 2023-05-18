@@ -10,3 +10,7 @@ class User(db.Model):
     image = db.Column(db.String(500), nullable=True, default='')
     date_created = db.Column(db.DateTime, default=datetime.now())
     date_updated = db.Column(db.DateTime, default=datetime.now())
+
+    def add_user(self):
+        db.session.add(self)
+        db.session.commit()

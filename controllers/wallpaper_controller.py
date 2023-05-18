@@ -20,9 +20,8 @@ def get_wallpaper(id):
         description=f"Wallpaper com id {id} não encontrado!")
 
     wallpaper_schema = WallpaperSchema()
-    serialized_wallpaper = wallpaper_schema.dump(wallpaper)
-
-    return jsonify(serialized_wallpaper), 200
+    response_data = wallpaper_schema.dump(wallpaper)
+    return make_response(jsonify(response_data), 200)
 
 
 @api.route('/wallpapers', methods=['GET'])
@@ -61,11 +60,11 @@ def get_wallpapers():
     has_next_page = (page * per_page) < total_results
     has_previous_page = page > 1
     totalPages = math.ceil(total_results / per_page)
+
     response_data = {'wallpapers': wallpapers_list,
                      'hasNextPage': has_next_page,
                      'hasPreviousPage': has_previous_page,
                      'pages': totalPages}
-
     return make_response(jsonify(response_data), 200)
 
 
@@ -98,11 +97,11 @@ def get_wallpapers_from_user():
     has_next_page = (page * per_page) < total_results
     has_previous_page = page > 1
     totalPages = math.ceil(total_results / per_page)
+
     response_data = {'wallpapers': result,
                      'hasNextPage': has_next_page,
                      'hasPreviousPage': has_previous_page,
                      'pages': totalPages}
-
     return make_response(jsonify(response_data), 200)
 
 
@@ -115,8 +114,9 @@ def upload_wallpaper():
     file = request.files.get('image')
     title = form_data.get('title')
     tags = form_data.get('tags')
-    tags = [format_alias_string(tag) for tag in eval(tags)]
     description = form_data.get('description')
+
+    tags = [format_alias_string(tag) for tag in eval(tags)]
 
     error = wallpaper_upload_validate(title, file, description, tags)
     if error:
@@ -139,28 +139,11 @@ def upload_wallpaper():
         image=image_url,
         tags=tags
     )
-    db.session.add(new_wallpaper)
-    db.session.commit()
+    new_wallpaper.add_wallpaper()
 
     wallpaper_schema = WallpaperSchema()
-    wallpaper_data = wallpaper_schema.dump(new_wallpaper)
-
-    return make_response(jsonify(wallpaper_data), 201)
-
-
-@api.route('/wallpaper/<int:id>', methods=['DELETE'])
-@jwt_required()
-@cross_origin(origins=Config.CLIENT_URL)
-def delete_wallpaper(id):
-    wallpaper = Wallpaper.query.get_or_404(
-        id, description=f"Wallpaper com id {id} não encontrado!")
-
-    db.session.delete(wallpaper)
-    db.session.commit()
-
-    response_data = {
-        'message': 'Wallpaper deletado com sucesso!', 'code': 'SUCCESS'}
-    return make_response(jsonify(response_data), 200)
+    response_data = wallpaper_schema.dump(new_wallpaper)
+    return make_response(jsonify(response_data), 201)
 
 
 @api.route('/wallpaper/<int:id>', methods=['PUT'])
@@ -171,8 +154,9 @@ def update_wallpaper(id):
     form_data = request.form.to_dict(flat=True)
     title = form_data.get('title')
     tags = form_data.get('tags')
-    tags = [format_alias_string(tag) for tag in eval(tags)]
     description = form_data.get('description')
+
+    tags = [format_alias_string(tag) for tag in eval(tags)]
 
     wallpaper = Wallpaper.query.get_or_404(
         id, description=f"Wallpaper with id {id} not found")
@@ -188,5 +172,18 @@ def update_wallpaper(id):
     wallpaper.date_updated = datetime.now()
     db.session.commit()
 
-    data = WallpaperSchema().dump(wallpaper)
-    return make_response(jsonify(data), 200)
+    response_data = WallpaperSchema().dump(wallpaper)
+    return make_response(jsonify(response_data), 200)
+
+
+@api.route('/wallpaper/<int:id>', methods=['DELETE'])
+@jwt_required()
+@cross_origin(origins=Config.CLIENT_URL)
+def delete_wallpaper(id):
+    wallpaper = Wallpaper.query.get_or_404(
+        id, description=f"Wallpaper com id {id} não encontrado!")
+    wallpaper.remove_wallpaper()
+
+    response_data = {
+        'message': 'Wallpaper deletado com sucesso!', 'code': 'SUCCESS'}
+    return make_response(jsonify(response_data), 200)

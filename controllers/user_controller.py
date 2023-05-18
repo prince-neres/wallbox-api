@@ -70,16 +70,16 @@ def register_user():
     try:
         new_user = User(username=username, email=email,
                         password=generate_password_hash(password))
-        db.session.add(new_user)
-        db.session.commit()
+        new_user.add_user()
 
         user_schema = UserSchema()
         user_json = user_schema.dump(new_user)
         expires = datetime.timedelta(days=7)
+
         user_json.update({"token": create_access_token(
             user_json, expires_delta=expires)})
-
-        return make_response(jsonify(user_json), 201)
+        response_data = user_json
+        return make_response(jsonify(response_data), 201)
     except Exception as e:
         error_data = {
             'message': f'Erro ao tentar criar usuário: {str(e)}',
@@ -104,12 +104,12 @@ def login():
 
         user_schema = UserSchema()
         user_json = user_schema.dump(user)
-
         expires = datetime.timedelta(days=7)
+
         user_json.update({"token": create_access_token(
             user_json, expires_delta=expires)})
-
-        return make_response(jsonify(user_json), 200)
+        response_data = user_json
+        return make_response(jsonify(response_data), 200)
 
     except Exception as e:
         error_data = {

@@ -21,6 +21,14 @@ class Wallpaper(db.Model):
     def favorite_count(self):
         return self.favorites.count()
 
+    def add_wallpaper(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def remove_wallpaper(self):
+        db.session.delete(self)
+        db.session.commit()
+
     def increment_download(self):
         self.downloads += 1
         db.session.commit()
