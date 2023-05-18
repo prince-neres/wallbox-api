@@ -3,7 +3,31 @@ from flask_cors import cross_origin
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from config import Config
 from models import Favorite, Wallpaper
+from schemas import WallpaperSchema
 from controllers import api
+
+
+@api.route('/wallpaper/user_favorites', methods=['GET'])
+@jwt_required()
+@cross_origin(origins=Config.CLIENT_URL)
+def user_favorites():
+    try:
+        user_id = get_jwt_identity().get('id')
+        user_favorites = Favorite.query.filter_by(user_id=user_id)
+        user_favorites_ids = [
+            favorite.wallpaper_id for favorite in user_favorites]
+
+        wallpapers_favorites = Wallpaper.query.filter(
+            Wallpaper.id.in_(user_favorites_ids)).all()
+
+        wallpaper_schema = WallpaperSchema()
+        favorites_wallpapers_json = [wallpaper_schema.dump(
+            wallpaper) for wallpaper in wallpapers_favorites]
+
+        response_data = favorites_wallpapers_json
+        return make_response(jsonify(response_data), 200)
+    except Exception as error:
+        return make_response(jsonify({'message': f'Erro favoritos não encontrados {str(error)}', 'CODE': 'ERROR'}), 500)
 
 
 @api.route('/wallpaper/<int:id>/downloads', methods=['POST'])
